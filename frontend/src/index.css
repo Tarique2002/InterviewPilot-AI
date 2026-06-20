@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+
+:root{
+    font-family: Inter, sans-serif;
+}
+
+
+body{
+    margin:0;
+    transition:all .3s ease;
+}
+
+
+
+/* Scrollbar */
+
+::-webkit-scrollbar{
+    width:8px;
+}
+
+
+::-webkit-scrollbar-track{
+    background:#111827;
+}
+
+
+::-webkit-scrollbar-thumb{
+    background:#06b6d4;
+    border-radius:20px;
+}
+
+
+::-webkit-scrollbar-thumb:hover{
+    background:#0891b2;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import API from "../api";
 
 export default function Report() {
   const [report, setReport] = useState("");
@@ -12,7 +13,7 @@ export default function Report() {
   const loadReport = async () => {
     try {
       const res = await axios.get(
-        "http://127.0.0.1:8000/final-report"
+        `${API}/final-report`
       );
 
       setReport(res.data.report);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API from "../api";
 
 export default function Resume() {
   const [file, setFile] = useState(null);
@@ -20,7 +21,7 @@ export default function Resume() {
 
     try {
       const res = await axios.post(
-        "http://127.0.0.1:8000/upload-resume",
+        `${API}/upload-resume`,
         formData
       );
 

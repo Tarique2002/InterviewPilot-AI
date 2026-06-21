@@ -1,44 +1,60 @@
-import requests
+from groq import Groq
+from dotenv import load_dotenv
+import os
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
-MODEL = "qwen2.5:1.5b"
+load_dotenv()
 
 
-# =====================================
-# LLM Caller
-# =====================================
+client = Groq(
+
+    api_key=os.getenv("GROQ_API_KEY")
+
+)
+
+
+MODEL = os.getenv(
+
+    "MODEL",
+
+    "llama-3.3-70b-versatile"
+
+)
+
+
+
+########################################
+# Generic LLM
+########################################
 
 def ask_llm(prompt):
 
+
     try:
 
-        response = requests.post(
 
-            OLLAMA_URL,
+        completion = client.chat.completions.create(
 
-            json={
-                "model": MODEL,
-                "prompt": prompt,
-                "stream": False
-            },
+            model=MODEL,
 
-            timeout=180
+            messages=[
+
+                {
+
+                    "role":"user",
+
+                    "content":prompt
+
+                }
+
+            ],
+
+            temperature=0.7
 
         )
 
 
-
-        if response.status_code == 200:
-
-            data = response.json()
-
-            return data.get("response", "No response")
-
-
-
-        return "Model Error"
+        return completion.choices[0].message.content
 
 
 
@@ -50,19 +66,21 @@ def ask_llm(prompt):
 
 
 
-# =====================================
-# Interview Question
-# =====================================
+
+########################################
+# Question Generator
+########################################
 
 def generate_question(resume_text):
 
 
-    prompt = f"""
+    prompt=f"""
 
-You are an HR interviewer.
+You are a Senior HR interviewer.
 
 
-Resume:
+Resume
+
 
 {resume_text}
 
@@ -71,7 +89,14 @@ Resume:
 Ask ONE interview question.
 
 
-Only output the question.
+Only question.
+
+
+No greeting.
+
+
+No explanation.
+
 
 
 """
@@ -82,34 +107,39 @@ Only output the question.
 
 
 
-# =====================================
+########################################
 # Evaluate Answer
-# =====================================
+########################################
 
-def evaluate_answer(answer, resume_text):
-
-
-
-    prompt = f"""
-
-You are a technical interviewer.
+def evaluate_answer(answer,resume_text):
 
 
-Resume:
+
+    prompt=f"""
+
+
+You are an interviewer.
+
+
+
+Resume
 
 
 {resume_text}
 
 
 
-Candidate Answer:
+Candidate Answer
 
 
 {answer}
 
 
 
-Provide:
+
+Give response in format
+
+
 
 
 Score : x/10
@@ -117,15 +147,26 @@ Score : x/10
 
 Strengths
 
+- item
+
+
+
 
 Weaknesses
+
+- item
+
+
 
 
 Improvement Tips
 
+- item
 
 
-Keep under 120 words.
+
+
+Maximum 120 words.
 
 
 
@@ -137,22 +178,21 @@ Keep under 120 words.
 
 
 
-
-# =====================================
-# ATS Resume Analysis
-# =====================================
+########################################
+# Resume Analysis
+########################################
 
 def analyze_resume(resume_text):
 
 
 
-    prompt = f"""
+    prompt=f"""
 
 Analyze Resume
 
 
 
-Resume:
+Resume
 
 
 {resume_text}
@@ -160,6 +200,7 @@ Resume:
 
 
 Provide
+
 
 
 ATS Score
@@ -175,8 +216,8 @@ Suggestions
 
 
 
-"""
 
+"""
 
 
     return ask_llm(prompt)
@@ -184,125 +225,53 @@ Suggestions
 
 
 
-# =====================================
-# FAST REPORT
-# =====================================
+########################################
+# Final Report
+########################################
 
 def generate_final_report(history):
 
 
-    total = len(history)
+
+    prompt=f"""
+
+Interview History
 
 
 
-    if total == 0:
-
-
-        return """
-
-No interview data available.
-
-"""
+{history}
 
 
 
 
-    score = 0
+Generate
 
 
 
-    for item in history:
+Overall Score
 
 
-
-        fb = item["feedback"]
-
+Technical Rating
 
 
-        if "9/10" in fb:
-
-            score += 9
+Communication
 
 
-        elif "8/10" in fb:
-
-            score += 8
-
-
-        elif "7/10" in fb:
-
-            score += 7
-
-
-        elif "6/10" in fb:
-
-            score += 6
-
-
-        else:
-
-            score += 5
-
-
-
-
-
-    avg = score / total
-
-
-
-
-    recommendation = (
-
-        "Highly Recommended"
-
-        if avg >= 8
-
-        else "Needs Improvement"
-
-    )
-
-
-
-
-
-    return f"""
-
-
-Overall Score : {round(avg*10)}%
-
-
-
-Technical Rating : {round(avg,1)}/10
-
-
-Communication Rating : 8/10
-
-
-Confidence Rating : 8/10
-
-
+Confidence
 
 
 Strengths
 
-• Good technical understanding
-
-• Clear explanation
-
-
 
 Weaknesses
-
-• Improve answer depth
-
 
 
 Hiring Recommendation
 
 
-{recommendation}
-
 
 
 """
+
+
+    return ask_llm(prompt)

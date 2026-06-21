@@ -1,25 +1,16 @@
+# Secrets
+.env
+
 # Python
-backend/venv/
+venv/
 __pycache__/
 *.pyc
 
-# React
-frontend/node_modules/
-frontend/dist/
+# uploads
+uploads/
 
-# Env
-.env
-.env.local
-
-# VSCode
+# IDE
 .vscode/
 
 # OS
 .DS_Store
-Thumbs.db
-
-# Uploads
-backend/uploads/
-
-# Logs
-*.log

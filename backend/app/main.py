@@ -2,6 +2,11 @@ from fastapi import FastAPI, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
+import sys
+import os
+
+# Dynamic python path lookup for monorepos
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.resume_parser import extract_resume_text
 from app.ollama_ai import (

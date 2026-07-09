@@ -10,3 +10,5 @@ services:
         sync: false
       - key: MODEL
         value: llama-3.3-70b-versatile
+      - key: PYTHON_VERSION
+        value: 3.11.9

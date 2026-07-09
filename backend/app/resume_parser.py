@@ -9,7 +9,9 @@ import io
 # -------------------------
 def extract_text_from_pdf(file):
 
-    pdf_reader = PdfReader(file.file)
+    content = file.file.read()
+
+    pdf_reader = PdfReader(io.BytesIO(content))
 
     text = ""
 

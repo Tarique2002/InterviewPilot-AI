@@ -6,13 +6,6 @@ import os
 load_dotenv()
 
 
-client = Groq(
-
-    api_key=os.getenv("GROQ_API_KEY")
-
-)
-
-
 MODEL = os.getenv(
 
     "MODEL",
@@ -21,6 +14,12 @@ MODEL = os.getenv(
 
 )
 
+
+def get_groq_client():
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY environment variable is not set. Please set it in your Render Environment Variables.")
+    return Groq(api_key=api_key)
 
 
 ########################################
@@ -32,6 +31,7 @@ def ask_llm(prompt):
 
     try:
 
+        client = get_groq_client()
 
         completion = client.chat.completions.create(
 

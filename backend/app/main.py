@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import json
 
 from app.resume_parser import extract_resume_text
 from app.ollama_ai import (
@@ -9,6 +10,12 @@ from app.ollama_ai import (
     analyze_resume,
     generate_final_report
 )
+
+from app.database import SessionLocal, engine
+from app.models import Base, SessionData
+
+# Ensure tables are created
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -22,10 +29,6 @@ app.add_middleware(
 )
 
 
-resume_text = ""
-interview_history = []
-
-
 class Answer(BaseModel):
     text: str
 
@@ -37,19 +40,59 @@ def home():
     }
 
 
+# Helper db functions
+def get_session_db(session_id: str):
+    db = SessionLocal()
+    try:
+        session = db.query(SessionData).filter(SessionData.session_id == session_id).first()
+        if not session:
+            session = SessionData(session_id=session_id, resume_text="", interview_history="[]")
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+        return session
+    finally:
+        db.close()
+
+def update_session_resume(session_id: str, resume_text: str):
+    db = SessionLocal()
+    try:
+        session = db.query(SessionData).filter(SessionData.session_id == session_id).first()
+        if not session:
+            session = SessionData(session_id=session_id, resume_text=resume_text, interview_history="[]")
+            db.add(session)
+        else:
+            session.resume_text = resume_text
+        db.commit()
+    finally:
+        db.close()
+
+def update_session_history(session_id: str, history: list):
+    db = SessionLocal()
+    try:
+        session = db.query(SessionData).filter(SessionData.session_id == session_id).first()
+        if not session:
+            session = SessionData(session_id=session_id, resume_text="", interview_history=json.dumps(history))
+            db.add(session)
+        else:
+            session.interview_history = json.dumps(history)
+        db.commit()
+    finally:
+        db.close()
+
+
 ####################################
 # Upload Resume
 ####################################
 @app.post("/upload-resume")
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(file: UploadFile = File(...), x_session_id: str = Header(default="default_session")):
 
-    global resume_text
-
-    resume_text = extract_resume_text(file)
+    text = extract_resume_text(file)
+    update_session_resume(x_session_id, text)
 
     return {
         "message": "Resume uploaded",
-        "length": len(resume_text)
+        "length": len(text)
     }
 
 
@@ -57,16 +100,16 @@ async def upload_resume(file: UploadFile = File(...)):
 # Resume Analysis
 ####################################
 @app.get("/resume-analysis")
-def resume_analysis():
+def resume_analysis(x_session_id: str = Header(default="default_session")):
 
-    global resume_text
+    session = get_session_db(x_session_id)
 
-    if resume_text == "":
+    if not session.resume_text or session.resume_text == "":
         return {
             "analysis": "Upload resume first"
         }
 
-    result = analyze_resume(resume_text)
+    result = analyze_resume(session.resume_text)
 
     return {
         "analysis": result
@@ -77,11 +120,12 @@ def resume_analysis():
 # Start Interview
 ####################################
 @app.get("/start")
-def start_interview():
+def start_interview(x_session_id: str = Header(default="default_session")):
 
-    global resume_text
+    session = get_session_db(x_session_id)
+    update_session_history(x_session_id, []) # Reset history for a new interview session
 
-    question = generate_question(resume_text)
+    question = generate_question(session.resume_text)
 
     return {
         "question": question
@@ -92,35 +136,30 @@ def start_interview():
 # Evaluate Answer
 ####################################
 @app.post("/evaluate")
-def evaluate(answer: Answer):
+def evaluate(answer: Answer, x_session_id: str = Header(default="default_session")):
 
-    global interview_history
-    global resume_text
-
+    session = get_session_db(x_session_id)
 
     result = evaluate_answer(
         answer.text,
-        resume_text
+        session.resume_text
     )
 
+    try:
+        history = json.loads(session.interview_history)
+    except Exception:
+        history = []
 
-    interview_history.append(
-
+    history.append(
         {
-
             "answer": answer.text,
-
             "feedback": result
-
         }
-
     )
-
+    update_session_history(x_session_id, history)
 
     return {
-
         "feedback": result
-
     }
 
 
@@ -128,20 +167,18 @@ def evaluate(answer: Answer):
 # Final Report
 ####################################
 @app.get("/final-report")
-def final_report():
+def final_report(x_session_id: str = Header(default="default_session")):
 
-    global interview_history
-
+    session = get_session_db(x_session_id)
+    try:
+        history = json.loads(session.interview_history)
+    except Exception:
+        history = []
 
     report = generate_final_report(
-
-        interview_history
-
+        history
     )
 
-
     return {
-
         "report": report
-
     }
